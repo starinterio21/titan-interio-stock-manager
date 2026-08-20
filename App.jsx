@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import Inventory from './pages/Inventory'
 import StockIn from './pages/StockIn'
 import StockOut from './pages/StockOut'
+import StockAdjustment from './pages/StockAdjustment'
 import TransactionHistory from './pages/TransactionHistory'
 import Suppliers from './pages/Suppliers'
 import Reports from './pages/Reports'
@@ -21,6 +22,10 @@ export default function App() {
         <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
         <Route path="/stock-in" element={<ProtectedRoute><StockIn /></ProtectedRoute>} />
         <Route path="/stock-out" element={<ProtectedRoute><StockOut /></ProtectedRoute>} />
+        <Route
+          path="/stock-adjustment"
+          element={<ProtectedRoute allowedRoles={['admin', 'manager']}><StockAdjustment /></ProtectedRoute>}
+        />
         <Route path="/transactions" element={<ProtectedRoute><TransactionHistory /></ProtectedRoute>} />
         <Route
           path="/suppliers"
