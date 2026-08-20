@@ -204,3 +204,5 @@ titan-interio-stock-manager/
 ├── .env.example             ← copy to .env and fill in your Supabase keys
 └── package.json
 ```
+
+
