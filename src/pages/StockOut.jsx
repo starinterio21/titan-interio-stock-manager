@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import ItemSearchSelect from '../components/ItemSearchSelect'
 
 export default function StockOut() {
   const { session } = useAuth()
@@ -70,12 +71,7 @@ export default function StockOut() {
       <form onSubmit={handleSubmit} className="card space-y-4">
         <div>
           <label className="label">Item *</label>
-          <select required className="input-field" value={itemId} onChange={(e) => setItemId(e.target.value)}>
-            <option value="">Select item</option>
-            {items.map((i) => (
-              <option key={i.id} value={i.id}>{i.name} ({i.sku})</option>
-            ))}
-          </select>
+          <ItemSearchSelect items={items} value={itemId} onChange={setItemId} />
           {selectedItem && (
             <p className="text-xs text-gray-400 mt-1">Current stock: {selectedItem.current_stock} {selectedItem.unit}</p>
           )}
