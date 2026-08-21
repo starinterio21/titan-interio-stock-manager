@@ -188,7 +188,7 @@ export default function Inventory() {
               <h2 className="font-semibold text-titan-dark">{form.id ? 'Edit Item' : 'Add New Item'}</h2>
             </div>
             <form onSubmit={handleSave} className="p-5 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="label">SKU / Item Code *</label>
                   <input required className="input-field" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
@@ -225,7 +225,7 @@ export default function Inventory() {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="label">Sub-Category / Variant</label>
                   <input className="input-field" value={form.sub_category} onChange={(e) => setForm({ ...form, sub_category: e.target.value })} />
@@ -236,7 +236,7 @@ export default function Inventory() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="label">Reorder Level</label>
                   <input type="number" step="any" className="input-field" value={form.reorder_level} onChange={(e) => setForm({ ...form, reorder_level: e.target.value })} />

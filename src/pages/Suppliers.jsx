@@ -117,7 +117,7 @@ export default function Suppliers() {
                 <label className="label">Contact Person</label>
                 <input className="input-field" value={form.contact_person} onChange={(e) => setForm({ ...form, contact_person: e.target.value })} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="label">Phone</label>
                   <input className="input-field" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
