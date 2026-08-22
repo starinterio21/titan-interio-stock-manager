@@ -4,6 +4,9 @@ import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Inventory from './pages/Inventory'
+import LowStock from './pages/LowStock'
+import OutOfStock from './pages/OutOfStock'
+import NotCounted from './pages/NotCounted'
 import StockIn from './pages/StockIn'
 import StockOut from './pages/StockOut'
 import StockAdjustment from './pages/StockAdjustment'
@@ -20,6 +23,9 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
+        <Route path="/low-stock" element={<ProtectedRoute><LowStock /></ProtectedRoute>} />
+        <Route path="/out-of-stock" element={<ProtectedRoute><OutOfStock /></ProtectedRoute>} />
+        <Route path="/not-counted" element={<ProtectedRoute><NotCounted /></ProtectedRoute>} />
         <Route path="/stock-in" element={<ProtectedRoute><StockIn /></ProtectedRoute>} />
         <Route path="/stock-out" element={<ProtectedRoute><StockOut /></ProtectedRoute>} />
         <Route
