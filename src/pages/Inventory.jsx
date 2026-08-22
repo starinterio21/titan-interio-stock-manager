@@ -80,7 +80,7 @@ export default function Inventory() {
     if (form.id) {
       ;({ error } = await supabase.from('items').update(payload).eq('id', form.id))
     } else {
-      ;({ error } = await supabase.from('items').insert({ ...payload, opening_stock: 0, current_stock: 0 }))
+      ;({ error } = await supabase.from('items').insert({ ...payload, opening_stock: 0, current_stock: null }))
     }
 
     if (error) {
@@ -153,13 +153,17 @@ export default function Inventory() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((item) => (
-                <tr key={item.id} className={item.current_stock <= item.reorder_level ? 'bg-red-50' : ''}>
+              {filtered.map((item) => {
+                const isNotCounted = item.current_stock === null
+                const isOutOfStock = item.current_stock !== null && item.current_stock <= 0
+                const isLowStock = item.current_stock !== null && item.current_stock > 0 && item.current_stock <= item.reorder_level
+                return (
+                <tr key={item.id} className={isOutOfStock ? 'bg-red-50' : isLowStock ? 'bg-orange-50' : ''}>
                   <td className="font-mono text-xs">{item.sku}</td>
                   <td className="font-medium">{item.name}</td>
                   <td>{item.categories?.name || '—'}</td>
-                  <td className={item.current_stock <= item.reorder_level ? 'text-red-600 font-semibold' : ''}>
-                    {item.current_stock} {item.unit}
+                  <td className={isOutOfStock ? 'text-red-600 font-semibold' : isLowStock ? 'text-orange-600 font-semibold' : isNotCounted ? 'text-gray-400 italic' : ''}>
+                    {isNotCounted ? 'Not counted' : `${item.current_stock} ${item.unit}`}
                   </td>
                   <td>{item.reorder_level}</td>
                   <td>₹{item.cost_price}</td>
@@ -171,7 +175,8 @@ export default function Inventory() {
                     </td>
                   )}
                 </tr>
-              ))}
+                )
+              })}
               {filtered.length === 0 && (
                 <tr><td colSpan={8} className="text-center text-gray-400 py-8">No items found</td></tr>
               )}

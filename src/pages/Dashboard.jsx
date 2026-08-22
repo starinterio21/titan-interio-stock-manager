@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({ totalItems: 0, stockValue: 0, lowStock: 0 })
+  const [stats, setStats] = useState({ totalItems: 0, stockValue: 0, lowStock: 0, outOfStock: 0, notCounted: 0 })
   const [lowStockItems, setLowStockItems] = useState([])
   const [recentActivity, setRecentActivity] = useState([])
   const [loading, setLoading] = useState(true)
@@ -18,9 +18,16 @@ export default function Dashboard() {
     const { data: items } = await supabase.from('items').select('*').eq('active', true)
     if (items) {
       const totalItems = items.length
-      const stockValue = items.reduce((sum, i) => sum + i.current_stock * i.cost_price, 0)
-      const lowStock = items.filter((i) => i.current_stock <= i.reorder_level)
-      setStats({ totalItems, stockValue, lowStock: lowStock.length })
+      const stockValue = items.reduce((sum, i) => sum + (i.current_stock ?? 0) * i.cost_price, 0)
+
+      // Not Counted: current_stock is null (never physically checked)
+      const notCounted = items.filter((i) => i.current_stock === null)
+      // Out of Stock: confirmed 0 (was actually counted and found empty)
+      const outOfStock = items.filter((i) => i.current_stock !== null && i.current_stock <= 0)
+      // Low Stock: above 0, but at or below reorder level
+      const lowStock = items.filter((i) => i.current_stock !== null && i.current_stock > 0 && i.current_stock <= i.reorder_level)
+
+      setStats({ totalItems, stockValue, lowStock: lowStock.length, outOfStock: outOfStock.length, notCounted: notCounted.length })
       setLowStockItems(lowStock.slice(0, 8))
     }
 
@@ -44,7 +51,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
         <div className="card">
           <p className="text-xs text-gray-500 uppercase tracking-wide">Total SKUs</p>
           <p className="text-3xl font-bold text-titan-dark mt-1">{stats.totalItems}</p>
@@ -55,12 +62,24 @@ export default function Dashboard() {
             ₹{stats.stockValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
           </p>
         </div>
-        <div className="card">
+        <Link to="/not-counted" className="card hover:shadow-md hover:border-gray-300 transition cursor-pointer">
+          <p className="text-xs text-gray-500 uppercase tracking-wide">Not Yet Counted</p>
+          <p className={`text-3xl font-bold mt-1 ${stats.notCounted > 0 ? 'text-gray-500' : 'text-titan-dark'}`}>
+            {stats.notCounted}
+          </p>
+        </Link>
+        <Link to="/low-stock" className="card hover:shadow-md hover:border-orange-300 transition cursor-pointer">
           <p className="text-xs text-gray-500 uppercase tracking-wide">Low Stock Items</p>
-          <p className={`text-3xl font-bold mt-1 ${stats.lowStock > 0 ? 'text-red-600' : 'text-titan-dark'}`}>
+          <p className={`text-3xl font-bold mt-1 ${stats.lowStock > 0 ? 'text-orange-600' : 'text-titan-dark'}`}>
             {stats.lowStock}
           </p>
-        </div>
+        </Link>
+        <Link to="/out-of-stock" className="card hover:shadow-md hover:border-red-300 transition cursor-pointer">
+          <p className="text-xs text-gray-500 uppercase tracking-wide">Out of Stock Items</p>
+          <p className={`text-3xl font-bold mt-1 ${stats.outOfStock > 0 ? 'text-red-600' : 'text-titan-dark'}`}>
+            {stats.outOfStock}
+          </p>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -68,7 +87,7 @@ export default function Dashboard() {
         <div className="card">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-titan-dark">Low Stock Alerts</h2>
-            <Link to="/inventory" className="text-xs text-titan-gold hover:underline">View all</Link>
+            <Link to="/low-stock" className="text-xs text-titan-gold hover:underline">View all</Link>
           </div>
           {lowStockItems.length === 0 ? (
             <p className="text-sm text-gray-400">No items below reorder level. 🎉</p>
@@ -80,7 +99,7 @@ export default function Dashboard() {
                     <p className="font-medium text-titan-dark">{item.name}</p>
                     <p className="text-xs text-gray-400">{item.sku}</p>
                   </div>
-                  <span className="text-red-600 font-semibold">
+                  <span className="text-orange-600 font-semibold">
                     {item.current_stock} / {item.reorder_level} {item.unit}
                   </span>
                 </li>
