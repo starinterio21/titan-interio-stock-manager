@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({ totalItems: 0, stockValue: 0, lowStock: 0, outOfStock: 0, notCounted: 0 })
+  const [stats, setStats] = useState({ totalItems: 0, stockValue: 0, lowStock: 0, outOfStock: 0 })
   const [lowStockItems, setLowStockItems] = useState([])
+  const [outOfStockItems, setOutOfStockItems] = useState([])
   const [recentActivity, setRecentActivity] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -20,15 +21,14 @@ export default function Dashboard() {
       const totalItems = items.length
       const stockValue = items.reduce((sum, i) => sum + (i.current_stock ?? 0) * i.cost_price, 0)
 
-      // Not Counted: current_stock is null (never physically checked)
-      const notCounted = items.filter((i) => i.current_stock === null)
-      // Out of Stock: confirmed 0 (was actually counted and found empty)
+      // Out of Stock: confirmed 0 (excludes not-yet-counted / null items)
       const outOfStock = items.filter((i) => i.current_stock !== null && i.current_stock <= 0)
       // Low Stock: above 0, but at or below reorder level
       const lowStock = items.filter((i) => i.current_stock !== null && i.current_stock > 0 && i.current_stock <= i.reorder_level)
 
-      setStats({ totalItems, stockValue, lowStock: lowStock.length, outOfStock: outOfStock.length, notCounted: notCounted.length })
+      setStats({ totalItems, stockValue, lowStock: lowStock.length, outOfStock: outOfStock.length })
       setLowStockItems(lowStock.slice(0, 8))
+      setOutOfStockItems(outOfStock.slice(0, 8))
     }
 
     const { data: activity } = await supabase
@@ -51,21 +51,15 @@ export default function Dashboard() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
-        <div className="card">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <Link to="/inventory" className="card hover:shadow-md hover:border-titan-gold/40 transition cursor-pointer">
           <p className="text-xs text-gray-500 uppercase tracking-wide">Total SKUs</p>
           <p className="text-3xl font-bold text-titan-dark mt-1">{stats.totalItems}</p>
-        </div>
-        <div className="card">
+        </Link>
+        <Link to="/reports" className="card hover:shadow-md hover:border-titan-gold/40 transition cursor-pointer">
           <p className="text-xs text-gray-500 uppercase tracking-wide">Stock Value</p>
           <p className="text-3xl font-bold text-titan-dark mt-1">
             ₹{stats.stockValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-          </p>
-        </div>
-        <Link to="/not-counted" className="card hover:shadow-md hover:border-gray-300 transition cursor-pointer">
-          <p className="text-xs text-gray-500 uppercase tracking-wide">Not Yet Counted</p>
-          <p className={`text-3xl font-bold mt-1 ${stats.notCounted > 0 ? 'text-gray-500' : 'text-titan-dark'}`}>
-            {stats.notCounted}
           </p>
         </Link>
         <Link to="/low-stock" className="card hover:shadow-md hover:border-orange-300 transition cursor-pointer">
@@ -108,30 +102,55 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Recent activity */}
+        {/* Out of stock */}
         <div className="card">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-titan-dark">Recent Activity</h2>
-            <Link to="/transactions" className="text-xs text-titan-gold hover:underline">View all</Link>
+            <h2 className="font-semibold text-titan-dark">Out of Stock Alerts</h2>
+            <Link to="/out-of-stock" className="text-xs text-titan-gold hover:underline">View all</Link>
           </div>
-          {recentActivity.length === 0 ? (
-            <p className="text-sm text-gray-400">No transactions yet.</p>
+          {outOfStockItems.length === 0 ? (
+            <p className="text-sm text-gray-400">No items out of stock. 🎉</p>
           ) : (
             <ul className="space-y-2">
-              {recentActivity.map((t) => (
-                <li key={t.id} className="flex justify-between items-center text-sm border-b border-gray-100 pb-2 last:border-0">
+              {outOfStockItems.map((item) => (
+                <li key={item.id} className="flex justify-between items-center text-sm border-b border-gray-100 pb-2 last:border-0">
                   <div>
-                    <p className="font-medium text-titan-dark">{t.items?.name}</p>
-                    <p className="text-xs text-gray-400">{t.profiles?.full_name} · {new Date(t.created_at).toLocaleString()}</p>
+                    <p className="font-medium text-titan-dark">{item.name}</p>
+                    <p className="text-xs text-gray-400">{item.sku}</p>
                   </div>
-                  <span className={`font-semibold ${t.type === 'in' ? 'text-green-600' : t.type === 'out' ? 'text-orange-600' : 'text-blue-600'}`}>
-                    {t.type === 'in' ? '+' : t.type === 'out' ? '-' : '='}{t.quantity}
+                  <span className="text-red-600 font-semibold">
+                    {item.current_stock} / {item.reorder_level} {item.unit}
                   </span>
                 </li>
               ))}
             </ul>
           )}
         </div>
+      </div>
+
+      {/* Recent activity */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold text-titan-dark">Recent Activity</h2>
+          <Link to="/transactions" className="text-xs text-titan-gold hover:underline">View all</Link>
+        </div>
+        {recentActivity.length === 0 ? (
+          <p className="text-sm text-gray-400">No transactions yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {recentActivity.map((t) => (
+              <li key={t.id} className="flex justify-between items-center text-sm border-b border-gray-100 pb-2 last:border-0">
+                <div>
+                  <p className="font-medium text-titan-dark">{t.items?.name}</p>
+                  <p className="text-xs text-gray-400">{t.profiles?.full_name} · {new Date(t.created_at).toLocaleString()}</p>
+                </div>
+                <span className={`font-semibold ${t.type === 'in' ? 'text-green-600' : t.type === 'out' ? 'text-orange-600' : 'text-blue-600'}`}>
+                  {t.type === 'in' ? '+' : t.type === 'out' ? '-' : '='}{t.quantity}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   )
