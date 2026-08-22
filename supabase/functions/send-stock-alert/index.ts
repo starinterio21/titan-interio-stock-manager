@@ -82,8 +82,10 @@ Deno.serve(async (req) => {
       .select('sku, name, current_stock, reorder_level, unit')
       .eq('active', true)
 
-    const outOfStock = (items || []).filter((i) => i.current_stock <= 0)
-    const lowStock = (items || []).filter((i) => i.current_stock > 0 && i.current_stock <= i.reorder_level)
+    // Out of Stock: confirmed 0 (excludes not-yet-counted items, which are null)
+    const outOfStock = (items || []).filter((i) => i.current_stock !== null && i.current_stock <= 0)
+    // Low Stock: above 0, but at or below reorder level
+    const lowStock = (items || []).filter((i) => i.current_stock !== null && i.current_stock > 0 && i.current_stock <= i.reorder_level)
 
     const relevantLow = settings.include_low_stock ? lowStock : []
     const relevantOut = settings.include_out_of_stock ? outOfStock : []
@@ -122,8 +124,8 @@ Deno.serve(async (req) => {
         </div>
         <div style="padding:20px;background:#fff;">
           <p style="font-size:14px;color:#333;">Automated stock alert as of ${istNow.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })} IST.</p>
-          ${rowsHtml(relevantOut, '#DC2626', '🔴 Out of Stock')}
           ${rowsHtml(relevantLow, '#EA580C', '🟠 Low Stock')}
+          ${rowsHtml(relevantOut, '#DC2626', '🔴 Out of Stock')}
           <p style="font-size:12px;color:#999;margin-top:24px;">Manage these in your Titan Interio Stock Manager site.</p>
         </div>
       </div>
