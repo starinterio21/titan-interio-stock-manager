@@ -2,63 +2,81 @@
 // Triggered hourly by pg_cron. Decides internally whether it's actually
 // time to send based on alert_settings (frequency / hour / day), then
 // checks stock levels and emails via Brevo if anything qualifies.
+// Also callable directly from the browser (Settings page "Send Test Email Now").
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const SERVICE_ROLE_KEY = Deno.env.get('SERVICE_ROLE_KEY')!
 const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY')!
-const BREVO_SENDER_EMAIL = Deno.env.get('BREVO_SENDER_EMAIL')! // the single address you verified in Brevo
+const BREVO_SENDER_EMAIL = Deno.env.get('BREVO_SENDER_EMAIL')!
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
+function json(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
+}
 
 Deno.serve(async (req) => {
-  try {
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
 
-    // 1. Load settings
+  try {
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+
     const { data: settings, error: settingsError } = await supabase
       .from('alert_settings')
       .select('*')
       .single()
 
     if (settingsError || !settings) {
-      return new Response(JSON.stringify({ skipped: 'no settings found' }), { status: 200 })
+      return json({ skipped: 'no settings found' })
     }
 
     if (!settings.enabled || !settings.recipient_emails?.length) {
-      return new Response(JSON.stringify({ skipped: 'alerts disabled or no recipients' }), { status: 200 })
+      return json({ skipped: 'alerts disabled or no recipients' })
     }
 
-    // 2. Decide if it's actually time to send (IST = UTC+5:30)
     const now = new Date()
     const istOffsetMs = 5.5 * 60 * 60 * 1000
     const istNow = new Date(now.getTime() + istOffsetMs)
     const currentHour = istNow.getUTCHours()
-    const currentDay = istNow.getUTCDay() // 0 = Sunday
+    const currentDay = istNow.getUTCDay()
 
     let shouldSend = false
+    const targetHour = Number(settings.send_hour)
+    const targetDay = Number(settings.weekly_day)
 
     if (settings.frequency === 'every_6_hours') {
       const lastSent = settings.last_sent_at ? new Date(settings.last_sent_at) : null
       shouldSend = !lastSent || (now.getTime() - lastSent.getTime()) >= 6 * 60 * 60 * 1000
     } else if (settings.frequency === 'daily') {
       const lastSent = settings.last_sent_at ? new Date(settings.last_sent_at) : null
-      const alreadySentToday = lastSent && lastSent.toDateString() === now.toDateString()
-      shouldSend = currentHour === settings.send_hour && !alreadySentToday
+      const lastSentIst = lastSent ? new Date(lastSent.getTime() + istOffsetMs) : null
+      const alreadySentToday = lastSentIst && lastSentIst.toDateString() === istNow.toDateString()
+      shouldSend = currentHour === targetHour && !alreadySentToday
     } else if (settings.frequency === 'weekly') {
       const lastSent = settings.last_sent_at ? new Date(settings.last_sent_at) : null
       const alreadySentThisWeek = lastSent && (now.getTime() - lastSent.getTime()) < 6 * 24 * 60 * 60 * 1000
-      shouldSend = currentHour === settings.send_hour && currentDay === settings.weekly_day && !alreadySentThisWeek
+      shouldSend = currentHour === targetHour && currentDay === targetDay && !alreadySentThisWeek
     }
 
-    // Allow a manual "force send now" flag for the test-email button
     const body = await req.json().catch(() => ({}))
     if (body.force === true) shouldSend = true
 
     if (!shouldSend) {
-      return new Response(JSON.stringify({ skipped: 'not time yet' }), { status: 200 })
+      console.log('not time yet', { currentHour, currentDay, targetHour, targetDay, frequency: settings.frequency, last_sent_at: settings.last_sent_at })
+      return json({ skipped: 'not time yet', currentHour, currentDay, targetHour, targetDay })
     }
 
-    // 3. Check stock levels
     const { data: items } = await supabase
       .from('items')
       .select('sku, name, current_stock, reorder_level, unit')
@@ -67,19 +85,14 @@ Deno.serve(async (req) => {
     const outOfStock = (items || []).filter((i) => i.current_stock <= 0)
     const lowStock = (items || []).filter((i) => i.current_stock > 0 && i.current_stock <= i.reorder_level)
 
-    const includeLow = settings.include_low_stock
-    const includeOut = settings.include_out_of_stock
-
-    const relevantLow = includeLow ? lowStock : []
-    const relevantOut = includeOut ? outOfStock : []
+    const relevantLow = settings.include_low_stock ? lowStock : []
+    const relevantOut = settings.include_out_of_stock ? outOfStock : []
 
     if (relevantLow.length === 0 && relevantOut.length === 0 && body.force !== true) {
-      // Nothing to report — still update last_sent_at so we don't re-check every hour
       await supabase.from('alert_settings').update({ last_sent_at: now.toISOString() }).eq('id', settings.id)
-      return new Response(JSON.stringify({ skipped: 'no low/out-of-stock items' }), { status: 200 })
+      return json({ skipped: 'no low/out-of-stock items' })
     }
 
-    // 4. Build email
     const rowsHtml = (list, color, label) =>
       list.length === 0 ? '' : `
         <h3 style="color:${color};margin:20px 0 8px;">${label} (${list.length})</h3>
@@ -116,7 +129,6 @@ Deno.serve(async (req) => {
       </div>
     `
 
-    // 5. Send via Brevo
     const emailRes = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
@@ -134,14 +146,13 @@ Deno.serve(async (req) => {
 
     if (!emailRes.ok) {
       const errText = await emailRes.text()
-      return new Response(JSON.stringify({ error: 'Brevo send failed', details: errText }), { status: 500 })
+      return json({ error: 'Brevo send failed', details: errText }, 500)
     }
 
-    // 6. Update last_sent_at
     await supabase.from('alert_settings').update({ last_sent_at: now.toISOString() }).eq('id', settings.id)
 
-    return new Response(JSON.stringify({ sent: true, outOfStock: relevantOut.length, lowStock: relevantLow.length }), { status: 200 })
+    return json({ sent: true, outOfStock: relevantOut.length, lowStock: relevantLow.length })
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 })
+    return json({ error: err.message }, 500)
   }
 })
