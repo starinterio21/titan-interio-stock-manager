@@ -5,7 +5,6 @@ export default function OutOfStock() {
   const [items, setItems] = useState([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
-  const [expanded, setExpanded] = useState(new Set())
 
   useEffect(() => {
     loadOutOfStock()
@@ -15,7 +14,7 @@ export default function OutOfStock() {
     setLoading(true)
     const { data } = await supabase
       .from('items')
-      .select('*, categories(name), suppliers(name)')
+      .select('*, categories(name)')
       .eq('active', true)
       .order('name', { ascending: true })
 
@@ -41,23 +40,12 @@ export default function OutOfStock() {
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]))
   }, [filtered])
 
-  function toggle(cat) {
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(cat)) next.delete(cat)
-      else next.add(cat)
-      return next
-    })
-  }
-
-  const isSearching = search.trim().length > 0
-
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold text-titan-dark">Out of Stock Items</h1>
         <p className="text-titan-steel text-sm">
-          Items with 0 stock — {items.length} item{items.length !== 1 ? 's' : ''} across {grouped.length} categor{grouped.length !== 1 ? 'ies' : 'y'}
+          {items.length} item{items.length !== 1 ? 's' : ''} across {grouped.length} categor{grouped.length !== 1 ? 'ies' : 'y'}
         </p>
       </div>
 
@@ -75,50 +63,30 @@ export default function OutOfStock() {
           <p className="text-sm text-gray-400 py-4">No out of stock items 🎉</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {grouped.map(([category, catItems]) => {
-            const isOpen = isSearching || expanded.has(category)
-            return (
-              <div key={category} className="card p-0 overflow-hidden">
-                <button
-                  onClick={() => toggle(category)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 transition-colors"
-                >
-                  <span className="font-semibold text-titan-dark">{category}</span>
-                  <span className="flex items-center gap-3">
-                    <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-1 rounded-full">
-                      {catItems.length} out
-                    </span>
-                    <span className="text-gray-400 text-xs">{isOpen ? '▲' : '▼'}</span>
-                  </span>
-                </button>
-                {isOpen && (
-                  <table className="data-table w-full">
-                    <thead>
-                      <tr>
-                        <th>SKU</th>
-                        <th>Name</th>
-                        <th>Stock</th>
-                        <th>Reorder Lvl</th>
-                        <th>Location</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {catItems.map((item) => (
-                        <tr key={item.id} className="bg-red-50">
-                          <td className="font-mono text-xs">{item.sku}</td>
-                          <td className="font-medium">{item.name}</td>
-                          <td className="text-red-600 font-semibold">{item.current_stock} {item.unit}</td>
-                          <td>{item.reorder_level ?? '—'}</td>
-                          <td>{item.location || '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {grouped.map(([category, catItems]) => (
+            <div key={category} className="card p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-semibold text-titan-dark text-sm">{category}</span>
+                <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full whitespace-nowrap">
+                  {catItems.length} out
+                </span>
               </div>
-            )
-          })}
+              <ul className="divide-y divide-gray-100">
+                {catItems.map((item) => (
+                  <li key={item.id} className="flex items-center justify-between py-1.5 text-sm">
+                    <div className="min-w-0 pr-2">
+                      <p className="font-medium text-titan-dark truncate">{item.name}</p>
+                      <p className="text-xs text-gray-400 font-mono">{item.sku}</p>
+                    </div>
+                    <span className="text-red-600 font-semibold whitespace-nowrap">
+                      {item.current_stock} {item.unit}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
       )}
     </div>
