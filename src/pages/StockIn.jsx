@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import ItemSearchSelect from '../components/ItemSearchSelect'
+import ItemPicker from '../components/ItemPicker'
 
 export default function StockIn() {
   const { session } = useAuth()
@@ -20,7 +20,7 @@ export default function StockIn() {
 
   async function loadData() {
     const [itemsRes, supRes] = await Promise.all([
-      supabase.from('items').select('id, sku, name, unit, current_stock').eq('active', true).order('name'),
+      supabase.from('items').select('id, sku, name, unit, current_stock, categories(name)').eq('active', true).order('name'),
       supabase.from('suppliers').select('*').order('name'),
     ])
     if (itemsRes.data) setItems(itemsRes.data)
@@ -64,9 +64,11 @@ export default function StockIn() {
       <form onSubmit={handleSubmit} className="card space-y-4">
         <div>
           <label className="label">Item *</label>
-          <ItemSearchSelect items={items} value={itemId} onChange={setItemId} />
+          <ItemPicker items={items} value={itemId} onChange={setItemId} />
           {selectedItem && (
-            <p className="text-xs text-gray-400 mt-1">Current stock: {selectedItem.current_stock} {selectedItem.unit}</p>
+            <p className="text-xs text-gray-400 mt-1">
+              Current stock: {selectedItem.current_stock === null ? 'Not counted' : `${selectedItem.current_stock} ${selectedItem.unit}`}
+            </p>
           )}
         </div>
 
