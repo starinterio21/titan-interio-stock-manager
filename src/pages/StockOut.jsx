@@ -45,6 +45,10 @@ export default function StockOut() {
   async function handleSubmit(e) {
     e.preventDefault()
     if (!itemId || !quantity || Number(quantity) <= 0) return
+    if (!jobOrder.trim()) {
+      setMessage('Job / Work Order Reference is required')
+      return
+    }
 
     if (selectedItem && selectedItem.current_stock !== null && Number(quantity) > selectedItem.current_stock) {
       const proceed = confirm(
@@ -100,8 +104,9 @@ export default function StockOut() {
         </div>
 
         <div>
-          <label className="label">Job / Work Order Reference</label>
+          <label className="label">Job / Work Order Reference *</label>
           <input
+            required
             className="input-field"
             list="job-order-suggestions"
             value={jobOrder}
