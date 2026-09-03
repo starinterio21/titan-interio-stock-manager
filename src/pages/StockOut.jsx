@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import ItemSearchSelect from '../components/ItemSearchSelect'
 
 export default function StockOut() {
   const { session } = useAuth()
@@ -10,12 +9,26 @@ export default function StockOut() {
   const [quantity, setQuantity] = useState('')
   const [jobOrder, setJobOrder] = useState('')
   const [issuedTo, setIssuedTo] = useState('')
+  const [jobSuggestions, setJobSuggestions] = useState([])
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
 
   useEffect(() => {
     loadItems()
+    loadJobSuggestions()
   }, [])
+
+  async function loadJobSuggestions() {
+    const { data } = await supabase
+      .from('stock_transactions')
+      .select('job_order')
+      .not('job_order', 'is', null)
+      .neq('job_order', '')
+    if (data) {
+      const unique = Array.from(new Set(data.map((d) => d.job_order.trim()))).sort((a, b) => a.localeCompare(b))
+      setJobSuggestions(unique)
+    }
+  }
 
   async function loadItems() {
     const { data } = await supabase
@@ -32,7 +45,7 @@ export default function StockOut() {
     e.preventDefault()
     if (!itemId || !quantity || Number(quantity) <= 0) return
 
-    if (selectedItem && Number(quantity) > selectedItem.current_stock) {
+    if (selectedItem && selectedItem.current_stock !== null && Number(quantity) > selectedItem.current_stock) {
       const proceed = confirm(
         `Warning: this will take stock below zero (current: ${selectedItem.current_stock} ${selectedItem.unit}). Continue anyway?`
       )
@@ -46,7 +59,7 @@ export default function StockOut() {
       item_id: itemId,
       type: 'out',
       quantity: Number(quantity),
-      job_order: jobOrder || null,
+      job_order: jobOrder.trim() || null,
       issued_to: issuedTo || null,
       user_id: session.user.id,
     })
@@ -57,6 +70,7 @@ export default function StockOut() {
       setMessage('✅ Stock out recorded successfully')
       setItemId(''); setQuantity(''); setJobOrder(''); setIssuedTo('')
       loadItems()
+      loadJobSuggestions()
     }
     setSaving(false)
   }
@@ -71,7 +85,12 @@ export default function StockOut() {
       <form onSubmit={handleSubmit} className="card space-y-4">
         <div>
           <label className="label">Item *</label>
-          <ItemSearchSelect items={items} value={itemId} onChange={setItemId} />
+          <select required className="input-field" value={itemId} onChange={(e) => setItemId(e.target.value)}>
+            <option value="">Select item</option>
+            {items.map((i) => (
+              <option key={i.id} value={i.id}>{i.name} ({i.sku})</option>
+            ))}
+          </select>
           {selectedItem && (
             <p className="text-xs text-gray-400 mt-1">Current stock: {selectedItem.current_stock} {selectedItem.unit}</p>
           )}
@@ -84,7 +103,22 @@ export default function StockOut() {
 
         <div>
           <label className="label">Job / Work Order Reference</label>
-          <input className="input-field" value={jobOrder} onChange={(e) => setJobOrder(e.target.value)} placeholder="JOB-2026-014" />
+          <input
+            className="input-field"
+            list="job-order-suggestions"
+            value={jobOrder}
+            onChange={(e) => setJobOrder(e.target.value)}
+            placeholder="JOB-2026-014"
+            autoComplete="off"
+          />
+          <datalist id="job-order-suggestions">
+            {jobSuggestions.map((job) => (
+              <option key={job} value={job} />
+            ))}
+          </datalist>
+          {jobOrder.trim() && jobSuggestions.some((j) => j.toLowerCase() === jobOrder.trim().toLowerCase()) && (
+            <p className="text-xs text-titan-gold mt-1">Adding to existing project "{jobOrder.trim()}"</p>
+          )}
         </div>
 
         <div>
