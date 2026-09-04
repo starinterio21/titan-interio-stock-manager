@@ -8,6 +8,7 @@ import LowStock from './pages/LowStock'
 import OutOfStock from './pages/OutOfStock'
 import StockIn from './pages/StockIn'
 import StockOut from './pages/StockOut'
+import StockReturn from './pages/StockReturn'
 import Projects from './pages/Projects'
 import StockAdjustment from './pages/StockAdjustment'
 import TransactionHistory from './pages/TransactionHistory'
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/out-of-stock" element={<ProtectedRoute><OutOfStock /></ProtectedRoute>} />
         <Route path="/stock-in" element={<ProtectedRoute><StockIn /></ProtectedRoute>} />
         <Route path="/stock-out" element={<ProtectedRoute><StockOut /></ProtectedRoute>} />
+        <Route path="/stock-return" element={<ProtectedRoute><StockReturn /></ProtectedRoute>} />
         <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
         <Route
           path="/stock-adjustment"
