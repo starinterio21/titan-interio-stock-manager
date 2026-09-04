@@ -16,7 +16,7 @@ export default function Projects() {
     const { data } = await supabase
       .from('stock_transactions')
       .select('*, items(name, sku, unit), profiles(full_name)')
-      .eq('type', 'out')
+      .in('type', ['out', 'return'])
       .not('job_order', 'is', null)
       .neq('job_order', '')
       .order('created_at', { ascending: false })
@@ -75,7 +75,7 @@ export default function Projects() {
             </div>
             <ul className="max-h-[70vh] overflow-y-auto">
               {filteredJobs.map(([job, entries]) => {
-                const totalQty = entries.reduce((sum, e) => sum + Number(e.quantity), 0)
+                const totalQty = entries.reduce((sum, e) => sum + (e.type === 'return' ? -Number(e.quantity) : Number(e.quantity)), 0)
                 const isSelected = selectedJob === job
                 return (
                   <li key={job}>
@@ -87,7 +87,7 @@ export default function Projects() {
                     >
                       <p className={`font-medium text-sm ${isSelected ? 'text-titan-gold' : 'text-titan-dark'}`}>{job}</p>
                       <p className="text-xs text-gray-400">
-                        {entries.length} entr{entries.length !== 1 ? 'ies' : 'y'} · {totalQty} units total
+                        {entries.length} entr{entries.length !== 1 ? 'ies' : 'y'} · {totalQty} net units used
                       </p>
                     </button>
                   </li>
@@ -108,24 +108,60 @@ export default function Projects() {
                     {selectedEntries.length} entr{selectedEntries.length !== 1 ? 'ies' : 'y'}
                   </span>
                 </div>
+
+                {/* Net usage per item */}
+                {(() => {
+                  const netByItem = new Map()
+                  for (const t of selectedEntries) {
+                    const key = t.item_id
+                    const existing = netByItem.get(key) || { name: t.items?.name, sku: t.items?.sku, unit: t.items?.unit, net: 0 }
+                    existing.net += t.type === 'return' ? -Number(t.quantity) : Number(t.quantity)
+                    netByItem.set(key, existing)
+                  }
+                  const netList = Array.from(netByItem.values()).filter((i) => i.net !== 0)
+                  return netList.length > 0 ? (
+                    <div className="mb-4 p-3 bg-gray-50 rounded-md">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Net Material Used</p>
+                      <ul className="space-y-1">
+                        {netList.map((i) => (
+                          <li key={i.sku} className="flex justify-between text-sm">
+                            <span className="text-titan-dark">{i.name}</span>
+                            <span className="font-semibold text-titan-dark">{i.net} {i.unit}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null
+                })()}
+
                 <div className="overflow-x-auto">
                   <table className="data-table w-full">
                     <thead>
                       <tr>
+                        <th>Type</th>
                         <th>Item</th>
                         <th>SKU</th>
                         <th>Quantity</th>
                         <th>Issued To</th>
-                        <th>Issued By</th>
+                        <th>By</th>
                         <th>Date</th>
                       </tr>
                     </thead>
                     <tbody>
                       {selectedEntries.map((t) => (
                         <tr key={t.id}>
+                          <td>
+                            {t.type === 'return' ? (
+                              <span className="text-xs font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full">Returned</span>
+                            ) : (
+                              <span className="text-xs font-semibold text-orange-700 bg-orange-50 px-2 py-0.5 rounded-full">Issued</span>
+                            )}
+                          </td>
                           <td className="font-medium">{t.items?.name || '—'}</td>
                           <td className="font-mono text-xs">{t.items?.sku || '—'}</td>
-                          <td className="text-orange-600 font-semibold">{t.quantity} {t.items?.unit}</td>
+                          <td className={t.type === 'return' ? 'text-green-700 font-semibold' : 'text-orange-600 font-semibold'}>
+                            {t.type === 'return' ? '-' : ''}{t.quantity} {t.items?.unit}
+                          </td>
                           <td>{t.issued_to || '—'}</td>
                           <td>{t.profiles?.full_name || '—'}</td>
                           <td className="text-xs text-gray-500">{new Date(t.created_at).toLocaleDateString()}</td>
