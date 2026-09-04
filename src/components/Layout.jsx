@@ -9,6 +9,7 @@ const navItems = [
   { to: '/out-of-stock', label: 'Out of Stock', icon: '🔴', roles: ['admin', 'manager', 'operator'] },
   { to: '/stock-in', label: 'Stock In', icon: '⬇️', roles: ['admin', 'manager', 'operator'] },
   { to: '/stock-out', label: 'Stock Out', icon: '⬆️', roles: ['admin', 'manager', 'operator'] },
+  { to: '/stock-return', label: 'Stock Return', icon: '↩️', roles: ['admin', 'manager', 'operator'] },
   { to: '/projects', label: 'Projects', icon: '🏗️', roles: ['admin', 'manager', 'operator'] },
   { to: '/stock-adjustment', label: 'Stock Adjustment', icon: '🛠️', roles: ['admin', 'manager'] },
   { to: '/transactions', label: 'Transaction History', icon: '📜', roles: ['admin', 'manager', 'operator'] },
