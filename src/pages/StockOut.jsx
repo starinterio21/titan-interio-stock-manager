@@ -11,6 +11,8 @@ export default function StockOut() {
   const [jobOrder, setJobOrder] = useState('')
   const [issuedTo, setIssuedTo] = useState('')
   const [jobSuggestions, setJobSuggestions] = useState([])
+  const [jobUnknown, setJobUnknown] = useState(false)
+  const [entryDate, setEntryDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
 
@@ -45,6 +47,11 @@ export default function StockOut() {
   async function handleSubmit(e) {
     e.preventDefault()
     if (!itemId || !quantity || Number(quantity) <= 0) return
+    const effectiveJobOrder = jobUnknown ? 'Unknown' : jobOrder.trim()
+    if (!effectiveJobOrder) {
+      setMessage('Job / Work Order Reference is required')
+      return
+    }
 
     if (selectedItem && selectedItem.current_stock !== null && Number(quantity) > selectedItem.current_stock) {
       const proceed = confirm(
@@ -56,20 +63,26 @@ export default function StockOut() {
     setSaving(true)
     setMessage('')
 
+    const now = new Date()
+    const [year, month, day] = entryDate.split('-').map(Number)
+    const createdAt = new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds())
+
     const { error } = await supabase.from('stock_transactions').insert({
       item_id: itemId,
       type: 'out',
       quantity: Number(quantity),
-      job_order: jobOrder.trim() || null,
+      job_order: effectiveJobOrder,
       issued_to: issuedTo || null,
       user_id: session.user.id,
+      created_at: createdAt.toISOString(),
     })
 
     if (error) {
       setMessage('Error: ' + error.message)
     } else {
       setMessage('✅ Stock out recorded successfully')
-      setItemId(''); setQuantity(''); setJobOrder(''); setIssuedTo('')
+      setItemId(''); setQuantity(''); setJobOrder(''); setIssuedTo(''); setJobUnknown(false)
+      setEntryDate(new Date().toISOString().slice(0, 10))
       loadItems()
       loadJobSuggestions()
     }
@@ -100,11 +113,25 @@ export default function StockOut() {
         </div>
 
         <div>
-          <label className="label">Job / Work Order Reference</label>
+          <label className="label">Date Issued</label>
           <input
+            type="date"
             className="input-field"
+            value={entryDate}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => setEntryDate(e.target.value)}
+          />
+          <p className="text-xs text-gray-400 mt-1">Defaults to today — change this for backdated / historical entries.</p>
+        </div>
+
+        <div>
+          <label className="label">Job / Work Order Reference {!jobUnknown && '*'}</label>
+          <input
+            required={!jobUnknown}
+            disabled={jobUnknown}
+            className="input-field disabled:bg-gray-100 disabled:text-gray-400"
             list="job-order-suggestions"
-            value={jobOrder}
+            value={jobUnknown ? 'Unknown' : jobOrder}
             onChange={(e) => setJobOrder(e.target.value)}
             placeholder="JOB-2026-014"
             autoComplete="off"
@@ -114,9 +141,17 @@ export default function StockOut() {
               <option key={job} value={job} />
             ))}
           </datalist>
-          {jobOrder.trim() && jobSuggestions.some((j) => j.toLowerCase() === jobOrder.trim().toLowerCase()) && (
+          {!jobUnknown && jobOrder.trim() && jobSuggestions.some((j) => j.toLowerCase() === jobOrder.trim().toLowerCase()) && (
             <p className="text-xs text-titan-gold mt-1">Adding to existing project "{jobOrder.trim()}"</p>
           )}
+          <label className="flex items-center gap-2 mt-2 text-sm text-titan-steel">
+            <input
+              type="checkbox"
+              checked={jobUnknown}
+              onChange={(e) => setJobUnknown(e.target.checked)}
+            />
+            Job unknown (historical entry)
+          </label>
         </div>
 
         <div>

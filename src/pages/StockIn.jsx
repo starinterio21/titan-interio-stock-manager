@@ -11,6 +11,7 @@ export default function StockIn() {
   const [quantity, setQuantity] = useState('')
   const [supplierId, setSupplierId] = useState('')
   const [reference, setReference] = useState('')
+  const [entryDate, setEntryDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
 
@@ -33,6 +34,10 @@ export default function StockIn() {
     setSaving(true)
     setMessage('')
 
+    const now = new Date()
+    const [year, month, day] = entryDate.split('-').map(Number)
+    const createdAt = new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds())
+
     const { error } = await supabase.from('stock_transactions').insert({
       item_id: itemId,
       type: 'in',
@@ -40,6 +45,7 @@ export default function StockIn() {
       supplier_id: supplierId || null,
       reference: reference || null,
       user_id: session.user.id,
+      created_at: createdAt.toISOString(),
     })
 
     if (error) {
@@ -47,6 +53,7 @@ export default function StockIn() {
     } else {
       setMessage('✅ Stock in recorded successfully')
       setItemId(''); setQuantity(''); setSupplierId(''); setReference('')
+      setEntryDate(new Date().toISOString().slice(0, 10))
       loadData()
     }
     setSaving(false)
@@ -75,6 +82,18 @@ export default function StockIn() {
         <div>
           <label className="label">Quantity Received *</label>
           <input required type="number" step="any" min="0.01" className="input-field" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+        </div>
+
+        <div>
+          <label className="label">Date Received</label>
+          <input
+            type="date"
+            className="input-field"
+            value={entryDate}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => setEntryDate(e.target.value)}
+          />
+          <p className="text-xs text-gray-400 mt-1">Defaults to today — change this for backdated / historical entries.</p>
         </div>
 
         <div>
