@@ -66,8 +66,8 @@ export default function OutOfStock() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {grouped.map(([category, catItems]) => (
             <div key={category} className="card p-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-semibold text-titan-dark text-sm">{category}</span>
+              <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-100">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{category}</span>
                 <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full whitespace-nowrap">
                   {catItems.length} out
                 </span>
