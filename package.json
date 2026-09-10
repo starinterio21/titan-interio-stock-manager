@@ -1,5 +1,5 @@
 {
-  "name": "titan-interio-accounts-manager",
+  "name": "titan-interio-stock-manager",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -10,10 +10,10 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
-    "jszip": "^3.10.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.0"
+    "react-router-dom": "^6.26.0",
+    "recharts": "^2.12.7"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
