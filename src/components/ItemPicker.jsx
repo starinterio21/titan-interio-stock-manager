@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import CategoryPicker from './CategoryPicker'
 
 /**
  * Searchable item picker — type to filter by name/SKU, optional category
@@ -14,6 +15,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 export default function ItemPicker({ items, value, onChange, placeholder = 'Type to search item or SKU...' }) {
   const [query, setQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [variantFilter, setVariantFilter] = useState('')
   const [open, setOpen] = useState(false)
   const wrapperRef = useRef(null)
 
@@ -44,13 +46,22 @@ export default function ItemPicker({ items, value, onChange, placeholder = 'Type
     return Array.from(set).sort((a, b) => a.localeCompare(b))
   }, [items])
 
+  const variants = useMemo(() => {
+    const set = new Set()
+    items.forEach((i) => {
+      if (i.sub_category) set.add(i.sub_category)
+    })
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [items])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return items
       .filter((i) => !categoryFilter || i.categories?.name === categoryFilter)
+      .filter((i) => !variantFilter || i.sub_category === variantFilter)
       .filter((i) => !q || i.name.toLowerCase().includes(q) || i.sku.toLowerCase().includes(q))
       .slice(0, 50) // cap rendered results for performance
-  }, [items, query, categoryFilter])
+  }, [items, query, categoryFilter, variantFilter])
 
   function selectItem(item) {
     onChange(item.id)
@@ -66,25 +77,33 @@ export default function ItemPicker({ items, value, onChange, placeholder = 'Type
 
   return (
     <div ref={wrapperRef} className="relative">
-      <div className="flex gap-2 mb-1">
+      <div className="flex gap-2 mb-1 flex-wrap">
         <input
-          className="input-field flex-1"
+          className="input-field flex-1 min-w-[160px]"
           placeholder={placeholder}
           value={query}
           onChange={handleInputChange}
           onFocus={() => setOpen(true)}
           autoComplete="off"
         />
-        <select
-          className="input-field max-w-[140px]"
-          value={categoryFilter}
-          onChange={(e) => { setCategoryFilter(e.target.value); setOpen(true) }}
-        >
-          <option value="">All categories</option>
-          {categories.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
+        <div className="w-[140px]">
+          <CategoryPicker
+            categories={categories}
+            value={categoryFilter}
+            onChange={(v) => { setCategoryFilter(v); setOpen(true) }}
+            placeholder="Category..."
+            allowAll
+          />
+        </div>
+        <div className="w-[140px]">
+          <CategoryPicker
+            categories={variants}
+            value={variantFilter}
+            onChange={(v) => { setVariantFilter(v); setOpen(true) }}
+            placeholder="Color / variant..."
+            allowAll
+          />
+        </div>
       </div>
 
       {open && (
@@ -99,8 +118,8 @@ export default function ItemPicker({ items, value, onChange, placeholder = 'Type
                 onClick={() => selectItem(item)}
                 className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between gap-2 border-b border-gray-50 last:border-0"
               >
-                <span className="min-w-0">
-                  <span className="block font-medium text-titan-dark truncate">{item.name}</span>
+                <span className="min-w-0 overflow-x-auto">
+                  <span className="block font-medium text-titan-dark whitespace-nowrap">{item.name}</span>
                   <span className="block text-xs text-gray-400 font-mono">{item.sku} · {item.categories?.name || 'Uncategorized'}</span>
                 </span>
                 <span className="text-xs text-gray-400 whitespace-nowrap">
