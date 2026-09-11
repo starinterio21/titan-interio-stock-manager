@@ -75,8 +75,8 @@ export default function OutOfStock() {
               <ul className="divide-y divide-gray-100">
                 {catItems.map((item) => (
                   <li key={item.id} className="flex items-center justify-between py-1.5 text-sm">
-                    <div className="min-w-0 pr-2">
-                      <p className="font-medium text-titan-dark truncate">{item.name}</p>
+                    <div className="min-w-0 pr-2 overflow-x-auto">
+                      <p className="font-medium text-titan-dark whitespace-nowrap">{item.name}</p>
                       <p className="text-xs text-gray-400 font-mono">{item.sku}</p>
                     </div>
                     <span className="text-red-600 font-semibold whitespace-nowrap">
