@@ -21,13 +21,6 @@ export default function ItemPicker({ items, value, onChange, placeholder = 'Type
 
   const selectedItem = items.find((i) => i.id === value)
 
-  // Keep the visible text in sync with the selected item when closed
-  useEffect(() => {
-    if (!open) {
-      setQuery(selectedItem ? `${selectedItem.name} (${selectedItem.sku})` : '')
-    }
-  }, [selectedItem, open])
-
   useEffect(() => {
     function handleClickOutside(e) {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
@@ -65,7 +58,7 @@ export default function ItemPicker({ items, value, onChange, placeholder = 'Type
 
   function selectItem(item) {
     onChange(item.id)
-    setQuery(`${item.name} (${item.sku})`)
+    setQuery('')
     setOpen(false)
   }
 
@@ -75,17 +68,35 @@ export default function ItemPicker({ items, value, onChange, placeholder = 'Type
     if (value) onChange('') // clear selection while actively typing something new
   }
 
+  function startSearching() {
+    setQuery('')
+    setOpen(true)
+  }
+
+  const showClosedSelection = !open && selectedItem
+
   return (
     <div ref={wrapperRef} className="relative">
       <div className="flex gap-2 mb-1 flex-wrap">
-        <input
-          className="input-field flex-1 min-w-[160px]"
-          placeholder={placeholder}
-          value={query}
-          onChange={handleInputChange}
-          onFocus={() => setOpen(true)}
-          autoComplete="off"
-        />
+        {showClosedSelection ? (
+          <button
+            type="button"
+            onClick={startSearching}
+            className="input-field flex-1 min-w-[160px] text-left overflow-x-auto whitespace-nowrap"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
+            {selectedItem.name} ({selectedItem.sku})
+          </button>
+        ) : (
+          <input
+            className="input-field flex-1 min-w-[160px]"
+            placeholder={placeholder}
+            value={query}
+            onChange={handleInputChange}
+            onFocus={() => setOpen(true)}
+            autoComplete="off"
+          />
+        )}
         <div className="w-[140px]">
           <CategoryPicker
             categories={categories}
@@ -118,7 +129,7 @@ export default function ItemPicker({ items, value, onChange, placeholder = 'Type
                 onClick={() => selectItem(item)}
                 className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between gap-2 border-b border-gray-50 last:border-0"
               >
-                <span className="min-w-0 overflow-x-auto">
+                <span className="flex-1 min-w-0 overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
                   <span className="block font-medium text-titan-dark whitespace-nowrap">{item.name}</span>
                   <span className="block text-xs text-gray-400 font-mono">{item.sku} · {item.categories?.name || 'Uncategorized'}</span>
                 </span>
