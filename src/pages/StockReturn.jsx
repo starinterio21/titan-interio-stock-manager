@@ -23,7 +23,7 @@ export default function StockReturn() {
   async function loadItems() {
     const { data } = await supabase
       .from('items')
-      .select('id, sku, name, unit, current_stock, categories(name)')
+      .select('id, sku, name, unit, current_stock, sub_category, categories(name)')
       .eq('active', true)
       .order('name')
     if (data) setItems(data)

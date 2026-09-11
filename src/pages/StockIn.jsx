@@ -21,7 +21,7 @@ export default function StockIn() {
 
   async function loadData() {
     const [itemsRes, supRes] = await Promise.all([
-      supabase.from('items').select('id, sku, name, unit, current_stock, categories(name)').eq('active', true).order('name'),
+      supabase.from('items').select('id, sku, name, unit, current_stock, sub_category, categories(name)').eq('active', true).order('name'),
       supabase.from('suppliers').select('*').order('name'),
     ])
     if (itemsRes.data) setItems(itemsRes.data)

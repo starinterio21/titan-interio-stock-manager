@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import ItemSearchSelect from '../components/ItemSearchSelect'
+import ItemPicker from '../components/ItemPicker'
 
 export default function StockAdjustment() {
   const { session } = useAuth()
@@ -19,14 +19,14 @@ export default function StockAdjustment() {
   async function loadItems() {
     const { data } = await supabase
       .from('items')
-      .select('id, sku, name, unit, current_stock')
+      .select('id, sku, name, unit, current_stock, sub_category, categories(name)')
       .eq('active', true)
       .order('name')
     if (data) setItems(data)
   }
 
   const selectedItem = items.find((i) => i.id === itemId)
-  const difference = selectedItem && newQuantity !== '' ? Number(newQuantity) - selectedItem.current_stock : null
+  const difference = selectedItem && newQuantity !== '' ? Number(newQuantity) - (selectedItem.current_stock ?? 0) : null
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -73,9 +73,11 @@ export default function StockAdjustment() {
       <form onSubmit={handleSubmit} className="card space-y-4">
         <div>
           <label className="label">Item *</label>
-          <ItemSearchSelect items={items} value={itemId} onChange={setItemId} />
+          <ItemPicker items={items} value={itemId} onChange={setItemId} />
           {selectedItem && (
-            <p className="text-xs text-gray-400 mt-1">Current stock: {selectedItem.current_stock} {selectedItem.unit}</p>
+            <p className="text-xs text-gray-400 mt-1">
+              Current stock: {selectedItem.current_stock === null ? 'Not counted' : `${selectedItem.current_stock} ${selectedItem.unit}`}
+            </p>
           )}
         </div>
 
@@ -84,7 +86,9 @@ export default function StockAdjustment() {
           <input required type="number" step="any" min="0" className="input-field" value={newQuantity} onChange={(e) => setNewQuantity(e.target.value)} />
           {difference !== null && !isNaN(difference) && difference !== 0 && (
             <p className={`text-xs mt-1 ${difference > 0 ? 'text-green-600' : 'text-orange-600'}`}>
-              {difference > 0 ? `+${difference}` : difference} {selectedItem?.unit} from current stock
+              {selectedItem?.current_stock === null
+                ? `Setting initial count of ${newQuantity} ${selectedItem?.unit}`
+                : `${difference > 0 ? `+${difference}` : difference} ${selectedItem?.unit} from current stock`}
             </p>
           )}
         </div>

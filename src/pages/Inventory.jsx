@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import CategoryPicker from '../components/CategoryPicker'
 
 const emptyForm = {
   id: null, sku: '', name: '', category_id: '', sub_category: '', unit: 'PCS',
@@ -15,6 +16,7 @@ export default function Inventory() {
   const [suppliers, setSuppliers] = useState([])
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [variantFilter, setVariantFilter] = useState('')
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState(emptyForm)
@@ -65,6 +67,31 @@ export default function Inventory() {
     }
   }
 
+  async function handleDeleteCategory() {
+    if (!form.category_id) return
+    const category = categories.find((c) => c.id === form.category_id)
+    if (!category) return
+
+    const { count } = await supabase
+      .from('items')
+      .select('id', { count: 'exact', head: true })
+      .eq('category_id', form.category_id)
+
+    const usageWarning = count > 0
+      ? `${count} item${count !== 1 ? 's' : ''} currently use "${category.name}" — they'll become uncategorized. `
+      : ''
+    if (!confirm(`${usageWarning}Delete category "${category.name}"? This cannot be undone.`)) return
+
+    const { error } = await supabase.from('categories').delete().eq('id', form.category_id)
+    if (error) {
+      alert('Error deleting category: ' + error.message)
+    } else {
+      setCategories((prev) => prev.filter((c) => c.id !== form.category_id))
+      setForm((f) => ({ ...f, category_id: '' }))
+      loadAll()
+    }
+  }
+
   async function handleSave(e) {
     e.preventDefault()
     setSaving(true)
@@ -103,8 +130,11 @@ export default function Inventory() {
       item.name.toLowerCase().includes(search.toLowerCase()) ||
       item.sku.toLowerCase().includes(search.toLowerCase())
     const matchesCategory = !categoryFilter || item.category_id === categoryFilter
-    return matchesSearch && matchesCategory
+    const matchesVariant = !variantFilter || item.sub_category === variantFilter
+    return matchesSearch && matchesCategory && matchesVariant
   })
+
+  const variants = Array.from(new Set(items.map((i) => i.sub_category).filter(Boolean))).sort((a, b) => a.localeCompare(b))
 
   return (
     <div className="space-y-4">
@@ -126,12 +156,25 @@ export default function Inventory() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <select className="input-field max-w-xs" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-          <option value="">All Categories</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+        <div className="w-full max-w-xs">
+          <CategoryPicker
+            categories={categories}
+            value={categoryFilter}
+            onChange={setCategoryFilter}
+            placeholder="Search category to filter..."
+            allowAll
+            withIds
+          />
+        </div>
+        <div className="w-full max-w-xs">
+          <CategoryPicker
+            categories={variants}
+            value={variantFilter}
+            onChange={setVariantFilter}
+            placeholder="Search color / variant..."
+            allowAll
+          />
+        </div>
       </div>
 
       {/* Table */}
@@ -213,13 +256,25 @@ export default function Inventory() {
                 <label className="label">Category</label>
                 {!showNewCategory ? (
                   <div className="flex gap-2">
-                    <select className="input-field" value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })}>
-                      <option value="">Select category</option>
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
+                    <div className="flex-1">
+                      <CategoryPicker
+                        categories={categories}
+                        value={form.category_id}
+                        onChange={(v) => setForm({ ...form, category_id: v })}
+                        placeholder="Search category..."
+                        allowAll
+                        withIds
+                      />
+                    </div>
                     <button type="button" onClick={() => setShowNewCategory(true)} className="btn-secondary text-xs whitespace-nowrap">+ New</button>
+                    <button
+                      type="button"
+                      onClick={handleDeleteCategory}
+                      disabled={!form.category_id}
+                      className="btn-secondary text-xs whitespace-nowrap text-red-500 disabled:text-gray-300 disabled:cursor-not-allowed"
+                    >
+                      Delete
+                    </button>
                   </div>
                 ) : (
                   <div className="flex gap-2">

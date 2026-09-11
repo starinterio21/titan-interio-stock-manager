@@ -36,7 +36,7 @@ export default function StockOut() {
   async function loadItems() {
     const { data } = await supabase
       .from('items')
-      .select('id, sku, name, unit, current_stock, categories(name)')
+      .select('id, sku, name, unit, current_stock, sub_category, categories(name)')
       .eq('active', true)
       .order('name')
     if (data) setItems(data)
@@ -81,7 +81,9 @@ export default function StockOut() {
       setMessage('Error: ' + error.message)
     } else {
       setMessage('✅ Stock out recorded successfully')
-      setItemId(''); setQuantity(''); setJobOrder(''); setIssuedTo(''); setJobUnknown(false)
+      // Job name stays filled in on purpose — issuing multiple items to the
+      // same job in a row is the common case, so don't make them retype it.
+      setItemId(''); setQuantity(''); setIssuedTo('')
       setEntryDate(new Date().toISOString().slice(0, 10))
       loadItems()
       loadJobSuggestions()
@@ -125,7 +127,18 @@ export default function StockOut() {
         </div>
 
         <div>
-          <label className="label">Job / Work Order Reference {!jobUnknown && '*'}</label>
+          <div className="flex items-center justify-between">
+            <label className="label">Job / Work Order Reference {!jobUnknown && '*'}</label>
+            {(jobOrder || jobUnknown) && (
+              <button
+                type="button"
+                onClick={() => { setJobOrder(''); setJobUnknown(false) }}
+                className="text-xs text-titan-gold hover:underline"
+              >
+                Clear (start new job)
+              </button>
+            )}
+          </div>
           <input
             required={!jobUnknown}
             disabled={jobUnknown}
